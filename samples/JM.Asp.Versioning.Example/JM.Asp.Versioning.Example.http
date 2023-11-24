@@ -1,0 +1,6 @@
+@JM.Asp.Versioning.Example_HostAddress = http://localhost:5174
+
+GET {{JM.Asp.Versioning.Example_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
