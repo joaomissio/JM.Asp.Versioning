@@ -46,13 +46,13 @@ This attribute indicates that method or controller class is being removed in the
 The "samples" folder contains a project with a complete example of using the package.
 
 ### v1
-![Example_V1](docs/example_v1.png)
+![Example_V1](https://raw.githubusercontent.com/joaomissio/JM.Asp.Versioning/main/docs/example_v1.png)
 
 ### v2
-![Example_V2](docs/example_v2.png)
+![Example_V2](https://raw.githubusercontent.com/joaomissio/JM.Asp.Versioning/main/docs/example_v2.png)
 
 ### v2.1
-![Example_V2.1](docs/example_v2_1.png)
+![Example_V2.1](https://raw.githubusercontent.com/joaomissio/JM.Asp.Versioning/main/docs/example_v2_1.png)
 
 ### v3
-![Example_V3](docs/example_v3.png)
+![Example_V3](https://raw.githubusercontent.com/joaomissio/JM.Asp.Versioning/main/docs/example_v3.png)

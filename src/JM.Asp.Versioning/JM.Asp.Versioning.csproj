@@ -6,6 +6,7 @@
 		<TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
 		<Version>1.0.0</Version>
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://github.com/joaomissio/JM.Asp.Versioning</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/joaomissio/JM.Asp.Versioning.git</RepositoryUrl>
 		<PackageTags>Asp;AspNet;WebAPI;Versioning</PackageTags>
@@ -36,6 +37,10 @@
 		<None Include="..\..\licenses\LICENSE.txt" Pack="true" PackagePath="LICENSE.txt" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
+	</ItemGroup>
+	
 	<ItemGroup>
 		<None Include="..\..\docs\dotnet.png">
 			<Pack>True</Pack>
