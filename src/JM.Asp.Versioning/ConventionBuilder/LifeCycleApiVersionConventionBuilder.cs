@@ -3,6 +3,7 @@ using Asp.Versioning.Conventions;
 using JM.Asp.Versioning.Extensions;
 using JM.Asp.Versioning.Internal;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using System;
 using System.Reflection;
 
 namespace JM.Asp.Versioning.ConventionBuilder

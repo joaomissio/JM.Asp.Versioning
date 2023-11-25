@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using JM.Asp.Versioning.Attributes;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using System.Linq;
 
 namespace JM.Asp.Versioning.Extensions
 {
