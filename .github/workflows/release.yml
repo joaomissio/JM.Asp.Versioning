@@ -1,0 +1,54 @@
+name: Release
+
+# Publishes the package to NuGet when a version tag is pushed, for example v2.0.0.
+# Requires the repository secret NUGET_API_KEY.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            7.0.x
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Check that the tag matches the package version
+        run: |
+          package_version=$(dotnet msbuild src/JM.Asp.Versioning -getProperty:Version)
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$package_version" != "$tag_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the package version $package_version."
+            exit 1
+          fi
+
+      - name: Build
+        run: dotnet build JM.Asp.Versioning.sln -c Release
+
+      - name: Test
+        run: dotnet test JM.Asp.Versioning.sln -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/JM.Asp.Versioning -c Release --no-build -o nupkg
+
+      # The .snupkg in the same folder is pushed together with the .nupkg.
+      - name: Push to NuGet
+        run: dotnet nuget push nupkg/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Create GitHub release
+        run: gh release create "$GITHUB_REF_NAME" nupkg/* --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
