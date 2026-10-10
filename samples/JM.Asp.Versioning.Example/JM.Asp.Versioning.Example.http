@@ -1,6 +1,23 @@
 @JM.Asp.Versioning.Example_HostAddress = http://localhost:5174
 
-GET {{JM.Asp.Versioning.Example_HostAddress}}/weatherforecast/
+### Available in every version
+GET {{JM.Asp.Versioning.Example_HostAddress}}/First/A_IncludeOnV1?api-version=1.0
+Accept: application/json
+
+### Removed on v2: 200 in v1
+GET {{JM.Asp.Versioning.Example_HostAddress}}/First/B_RemoveOnV2?api-version=1.0
+Accept: application/json
+
+### Removed on v2: 400 in v2
+GET {{JM.Asp.Versioning.Example_HostAddress}}/First/B_RemoveOnV2?api-version=2.0
+Accept: application/json
+
+### Included on v2.1
+GET {{JM.Asp.Versioning.Example_HostAddress}}/First/C_IncludeOnV2_1?api-version=2.1
+Accept: application/json
+
+### Included on v3: no version uses the default version (3.0)
+GET {{JM.Asp.Versioning.Example_HostAddress}}/Second/C_IncludeOnV3
 Accept: application/json
 
 ###

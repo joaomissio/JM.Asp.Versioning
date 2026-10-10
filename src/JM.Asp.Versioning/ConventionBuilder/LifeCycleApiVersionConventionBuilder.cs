@@ -1,4 +1,4 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using Asp.Versioning.Conventions;
 using JM.Asp.Versioning.Extensions;
 using JM.Asp.Versioning.Internal;
@@ -30,16 +30,26 @@ namespace JM.Asp.Versioning.ConventionBuilder
             _apiVersionConventionBuilder = apiVersionConventionBuilder;
         }
 
+        /// <summary>
+        /// Initializes a new instance that detects the API versions from the attributes found in the assembly.
+        /// </summary>
+        /// <param name="assembly">The assembly that contains the controllers.</param>
         public LifeCycleApiVersionConventionBuilder(Assembly assembly)
             : this(new ApiVersions(assembly), new ApiVersionConventionBuilder())
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance with a fixed range of major API versions.
+        /// </summary>
+        /// <param name="startVersion">The first (oldest) major version.</param>
+        /// <param name="currentVersion">The current (newest) major version.</param>
         public LifeCycleApiVersionConventionBuilder(int startVersion, int currentVersion)
             : this(new ApiVersions(startVersion, currentVersion), new ApiVersionConventionBuilder())
         {
         }
 
+        /// <inheritdoc />
         public override bool ApplyTo(ControllerModel controller)
         {
             var controllerIntroducedInVersion = controller.GetIncludedVersion();
@@ -91,11 +101,12 @@ namespace JM.Asp.Versioning.ConventionBuilder
             foreach (var actionModel in controller.Actions)
             {
                 var actionModelIntroduced = actionModel.GetIncludedVersion();
+                var actionModelRemoved = actionModel.GetRemovedVersion();
 
-                ValidateActionModel(controller, includedVersion, actionModelIntroduced, actionModel);
+                ValidateActionModel(controller, actionModel, includedVersion, removedVersion, actionModelIntroduced, actionModelRemoved);
 
                 var actionIntroducedVersion = actionModelIntroduced ?? includedVersion;
-                var actionRemovedVersion = actionModel.GetRemovedVersion() ?? removedVersion;
+                var actionRemovedVersion = actionModelRemoved ?? removedVersion;
 
                 SetActionApiVersions(actionModel, conventionBuilder, actionIntroducedVersion, actionRemovedVersion);
             }
@@ -112,11 +123,40 @@ namespace JM.Asp.Versioning.ConventionBuilder
             actionConventionBuilder.HasDeprecatedApiVersions(actionDeprecatedVersions);
         }
 
-        private static void ValidateActionModel(ControllerModel controller, ApiVersion? controllerIncludedVersion, ApiVersion? actionIncludedVersion, ActionModel action)
+        private static void ValidateActionModel(ControllerModel controller, ActionModel action, ApiVersion? controllerIncludedVersion, ApiVersion? controllerRemovedVersion, ApiVersion? actionIncludedVersion, ApiVersion? actionRemovedVersion)
         {
+            var name = $"Action ({controller.ControllerType.Name}.{action.ActionMethod.Name})";
+
             if (actionIncludedVersion is not null && actionIncludedVersion < controllerIncludedVersion)
             {
-                throw new InvalidOperationException($"Action ({action.ActionName}) version cannot be included before controller ({controller.ControllerName}) version.");
+                throw new InvalidOperationException($"{name} version cannot be included before controller ({controller.ControllerType.Name}) version.");
+            }
+
+            if (actionIncludedVersion is not null && controllerRemovedVersion is not null && actionIncludedVersion >= controllerRemovedVersion)
+            {
+                throw new InvalidOperationException($"{name} version cannot be included after controller ({controller.ControllerType.Name}) is removed.");
+            }
+
+            if (actionRemovedVersion is null)
+            {
+                return;
+            }
+
+            var includedVersion = actionIncludedVersion ?? controllerIncludedVersion;
+
+            if (actionRemovedVersion == includedVersion)
+            {
+                throw new InvalidOperationException($"{name} ApiVersion cannot be included and removed in the same version.");
+            }
+
+            if (actionRemovedVersion < includedVersion)
+            {
+                throw new InvalidOperationException($"{name} ApiVersion cannot be removed before it is included.");
+            }
+
+            if (controllerRemovedVersion is not null && actionRemovedVersion > controllerRemovedVersion)
+            {
+                throw new InvalidOperationException($"{name} version cannot be removed after controller ({controller.ControllerType.Name}) is removed.");
             }
         }
 

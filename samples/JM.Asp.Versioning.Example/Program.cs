@@ -27,7 +27,7 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwaggerPage(app.Services.GetService<IApiVersionDescriptionProvider>()!);
+    app.UseSwaggerPage(app.Services.GetRequiredService<IApiVersionDescriptionProvider>());
 }
 
 app.UseHttpsRedirection();
