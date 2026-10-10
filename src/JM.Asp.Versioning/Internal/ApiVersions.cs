@@ -1,4 +1,4 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using JM.Asp.Versioning.Attributes;
 using System;
 using System.Collections.Generic;
@@ -7,33 +7,43 @@ using System.Reflection;
 
 namespace JM.Asp.Versioning.Internal
 {
-    internal class ApiVersions
+    internal sealed class ApiVersions
     {
-        internal ApiVersion Start => _startVersion;
-        internal ApiVersion Current => _currentVersion;
+        internal ApiVersion Start { get; }
 
-        private readonly ApiVersion _startVersion;
-
-        private readonly ApiVersion _currentVersion;
+        internal ApiVersion Current { get; }
 
         internal IReadOnlyList<ApiVersion> AllVersions { get; }
 
         internal ApiVersions(Assembly assembly)
+            : this(GetLoadableTypes(assembly ?? throw new ArgumentNullException(nameof(assembly))), assembly.GetName().Name)
         {
-            var allVersions = GetAllApiVersions(assembly);
+        }
 
-            _startVersion = allVersions.First().Version;
-            _currentVersion = allVersions.Last().Version;
+        internal ApiVersions(IEnumerable<Type> types, string? assemblyName = null)
+        {
+            var allVersions = GetAllApiVersions(types);
 
-            AllVersions = allVersions.Select(s => s.Version).ToList();
+            if (allVersions.Count == 0)
+            {
+                var source = assemblyName is null ? "the given types" : $"assembly '{assemblyName}'";
+
+                throw new InvalidOperationException(
+                    $"No API version found in {source}. Apply [{nameof(ApiVersionIncludeAttribute)}] to at least one controller or action, " +
+                    $"or set {nameof(ApiVersionOptions)}.{nameof(ApiVersionOptions.Assembly)} to the assembly that contains the controllers.");
+            }
+
+            Start = allVersions[0];
+            Current = allVersions[allVersions.Count - 1];
+            AllVersions = allVersions;
         }
 
         internal ApiVersions(int startApiVersion, int currentApiVersion)
         {
             if (currentApiVersion < startApiVersion) throw new ArgumentException($"{nameof(currentApiVersion)} must be >= {nameof(startApiVersion)}");
 
-            _startVersion = new ApiVersion(startApiVersion, 0);
-            _currentVersion = new ApiVersion(currentApiVersion, 0);
+            Start = new ApiVersion(startApiVersion, 0);
+            Current = new ApiVersion(currentApiVersion, 0);
 
             var allVersions = new List<ApiVersion>();
 
@@ -45,51 +55,42 @@ namespace JM.Asp.Versioning.Internal
             AllVersions = allVersions;
         }
 
-        internal (ApiVersion StartVersion, ApiVersion CurrentVersion) GetRangeApiVersions(Assembly assembly)
+        // A removal defines an API version too: the version in which the endpoint no longer exists.
+        private static List<ApiVersion> GetAllApiVersions(IEnumerable<Type> types)
         {
-            var activeVersions = GetAllApiVersions(assembly);
-
-            var startVersion = activeVersions.FirstOrDefault();
-            var currentVersion = activeVersions.LastOrDefault();
-
-            if (startVersion is null || currentVersion is null)
-            {
-                throw new InvalidOperationException("No api versioning found.");
-            }
-
-            return (startVersion.Version, currentVersion.Version);
+            return types
+               .SelectMany(x => x.GetMethods().Cast<MemberInfo>().Append(x))
+               .SelectMany(x => x.GetCustomAttributes<ApiVersionIncludeAttribute>().Select(a => a.Version)
+                   .Concat(x.GetCustomAttributes<ApiVersionRemoveAttribute>().Select(a => a.Version)))
+               .Distinct().OrderBy(o => o).ToList();
         }
 
-        internal List<ApiVersionIncludeAttribute> GetAllApiVersions(Assembly assembly)
+        private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
         {
-            var allVersions = assembly.GetTypes()
-               .SelectMany(x => x.GetMethods().Cast<MemberInfo>().Append(x))
-               .SelectMany(x => x.GetCustomAttributes<ApiVersionIncludeAttribute>())
-               .Distinct().OrderBy(o => o.Version).ToList();
-
-
-            if (allVersions is null || !allVersions.Any())
+            try
             {
-                throw new InvalidOperationException("No api versioning found.");
+                return assembly.GetTypes();
             }
-
-            return allVersions;
+            catch (ReflectionTypeLoadException ex)
+            {
+                return ex.Types.Where(t => t is not null)!;
+            }
         }
 
         internal ApiVersion[] GetSupportedVersions(ApiVersion? includedVersion, ApiVersion? removedVersion = null)
         {
-            if (includedVersion is null || includedVersion > _currentVersion)
-                return new ApiVersion[0];
+            if (includedVersion is null || includedVersion > Current)
+                return Array.Empty<ApiVersion>();
             else if (removedVersion is null)
-                return new[] { _currentVersion };
+                return new[] { Current };
             else if (includedVersion > removedVersion)
                 throw new InvalidOperationException($"Cannot remove an API version ({removedVersion}) before it has been introduced ({includedVersion}).");
             else if (includedVersion == removedVersion)
                 throw new InvalidOperationException($"Cannot remove an API version ({removedVersion}) in the same version it has been introduced ({includedVersion}).");
-            else if (removedVersion > _currentVersion)
-                return new[] { _currentVersion };
+            else if (removedVersion > Current)
+                return new[] { Current };
             else
-                return new ApiVersion[0];
+                return Array.Empty<ApiVersion>();
         }
 
         internal ApiVersion[] GetDeprecatedVersions(ApiVersion? includedVersion, ApiVersion? removedVersion = null)
@@ -97,16 +98,12 @@ namespace JM.Asp.Versioning.Internal
             if (includedVersion == null)
                 throw new ArgumentException($"{nameof(includedVersion)} cannot be null.");
 
-            if (removedVersion == null)
-            {
-                return AllVersions.Where(v =>
-                    v >= includedVersion
-                    && v < _currentVersion).ToArray();
-            }
+            // The current version is never deprecated, even if a removal is scheduled for a later version.
+            var limit = removedVersion is null || removedVersion > Current ? Current : removedVersion;
 
             return AllVersions.Where(v =>
                 v >= includedVersion
-                && v < removedVersion).ToArray();
+                && v < limit).ToArray();
         }
     }
 }
